@@ -1,0 +1,47 @@
+name: Main
+
+on:
+  push:
+    branches:
+      - main
+
+  merge_group:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !contains(github.ref, 'refs/heads/main') }}
+
+jobs:
+  check-merge-queue-release:
+    name: Check merge queue release
+    uses: ./.github/workflows/check-merge-queue-release.yml
+
+  lint-build-test:
+    name: Lint, build, and test
+    uses: ./.github/workflows/lint-build-test.yml
+
+  all-jobs-complete:
+    name: All jobs complete
+    runs-on: ubuntu-latest
+    needs:
+      - check-merge-queue-release
+      - lint-build-test
+    outputs:
+      passed: ${{ steps.set-output.outputs.passed }}
+    steps:
+      - name: Set passed output
+        id: set-output
+        run: echo "passed=true" >> "$GITHUB_OUTPUT"
+
+  all-jobs-pass:
+    name: All jobs pass
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    needs: all-jobs-complete
+    steps:
+      - name: Check that all jobs have passed
+        run: |
+          passed="${{ needs.all-jobs-complete.outputs.passed }}"
+          if [[ $passed != "true" ]]; then
+            exit 1
+          fi

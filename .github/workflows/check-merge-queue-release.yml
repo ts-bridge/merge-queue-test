@@ -1,0 +1,33 @@
+name: Check merge queue release
+
+on:
+  workflow_call:
+
+jobs:
+  get-merge-queue-pr:
+    name: Get merge queue PR
+    runs-on: ubuntu-latest
+    outputs:
+      pr-number: ${{ steps.set-pr-number.outputs.pr-number }}
+    steps:
+      - name: Get PR number
+        id: set-pr-number
+        uses: actions/github-script@v8
+        env:
+          MERGE_GROUP_REF: ${{ github.event.merge_group.head_ref }}
+        with:
+          script: |
+            const branch = process.env.MERGE_GROUP_REF;
+            const res = branch.match(/gh-readonly-queue\/.+\/pr-(\d+)-\w+/);
+            if (res) {
+              const response = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: parseInt(res[1], 10),
+              });
+
+              return response.data;
+            }
+
+            context.fail(`No PR number found in branch name "${branch}".`);
+
