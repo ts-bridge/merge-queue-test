@@ -29,5 +29,5 @@ jobs:
               return response.data;
             }
 
-            context.fail(`No PR number found in branch name "${branch}".`);
+            core.setFailed(`No PR number found in branch name "${branch}".`);
 
